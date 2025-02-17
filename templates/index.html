@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polynomial Interpolation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(var(--border))",
+                        input: "hsl(var(--input))",
+                        ring: "hsl(var(--ring))",
+                        background: "hsl(var(--background))",
+                        foreground: "hsl(var(--foreground))",
+                        primary: {
+                            DEFAULT: "hsl(var(--primary))",
+                            foreground: "hsl(var(--primary-foreground))",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(var(--secondary))",
+                            foreground: "hsl(var(--secondary-foreground))",
+                        },
+                        destructive: {
+                            DEFAULT: "hsl(var(--destructive))",
+                            foreground: "hsl(var(--destructive-foreground))",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(var(--muted))",
+                            foreground: "hsl(var(--muted-foreground))",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(var(--accent))",
+                            foreground: "hsl(var(--accent-foreground))",
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        @layer base {
+            :root {
+                --background: 0 0% 100%;
+                --foreground: 222.2 84% 4.9%;
+                --card: 0 0% 100%;
+                --card-foreground: 222.2 84% 4.9%;
+                --popover: 0 0% 100%;
+                --popover-foreground: 222.2 84% 4.9%;
+                --primary: 222.2 47.4% 11.2%;
+                --primary-foreground: 210 40% 98%;
+                --secondary: 210 40% 96.1%;
+                --secondary-foreground: 222.2 47.4% 11.2%;
+                --muted: 210 40% 96.1%;
+                --muted-foreground: 215.4 16.3% 46.9%;
+                --accent: 210 40% 96.1%;
+                --accent-foreground: 222.2 47.4% 11.2%;
+                --destructive: 0 84.2% 60.2%;
+                --destructive-foreground: 210 40% 98%;
+                --border: 214.3 31.8% 91.4%;
+                --input: 214.3 31.8% 91.4%;
+                --ring: 222.2 84% 4.9%;
+                --radius: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-background font-sans antialiased">
+    <div class="max-w-2xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+        <!-- Header -->
+        <div class="space-y-2">
+            <h1 class="text-3xl font-semibold tracking-tight">Polynomial Interpolation</h1>
+            <p class="text-[15px] text-muted-foreground">
+                Experiment with different interpolation methods.
+            </p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="space-y-8">
+            <!-- Input Mode Tabs -->
+            <div class="flex space-x-1 rounded-lg bg-muted p-1" role="tablist">
+                <button type="button" onclick="setInputMode('function')" id="functionBtn"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm bg-background text-foreground shadow-sm"
+                    role="tab">
+                    Function Input
+                </button>
+                <button type="button" onclick="setInputMode('file')" id="fileBtn"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-muted-foreground"
+                    role="tab">
+                    File Upload
+                </button>
+            </div>
+
+            <!-- Function Input Form -->
+            <div id="functionInput" class="space-y-6">
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="function">
+                            Function f(x)
+                        </label>
+                        <input type="text" id="function" placeholder="x**2"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <p class="text-[13px] text-muted-foreground">
+                            Supports expressions like sin(5x), x^2, 5x
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="a">
+                                Interval Start (a)
+                            </label>
+                            <input type="number" id="a" value="-1" step="0.1"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="b">
+                                Interval End (b)
+                            </label>
+                            <input type="number" id="b" value="1" step="0.1"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="degree">
+                            Polynomial Degree
+                        </label>
+                        <input type="number" id="degree" value="5" min="1"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Upload Form -->
+            <div id="fileInput" class="hidden space-y-6">
+                <div class="space-y-2">
+                    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="csvFile">
+                        Upload CSV File (x,y points)
+                    </label>
+                    <input type="file" id="csvFile" accept=".csv"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                </div>
+            </div>
+
+            <!-- Interpolation Methods -->
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <label class="text-sm font-medium leading-none">
+                        Interpolation Methods
+                    </label>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="method" value="sle" checked
+                                class="h-4 w-4 rounded border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <span class="text-sm">System of Linear Equations</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="method" value="lagrange"
+                                class="h-4 w-4 rounded border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <span class="text-sm">Lagrange Interpolation</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" name="method" value="parametric"
+                                class="h-4 w-4 rounded border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <span class="text-sm">Parametric Interpolation (File only)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interpolate Button -->
+            <button onclick="interpolate()" type="button"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full">
+                Interpolate
+            </button>
+
+            <!-- Error Message -->
+            <div id="error" class="hidden rounded-md bg-destructive/15 px-4 py-3 text-sm text-destructive">
+                Please enter a function.
+            </div>
+
+            <!-- Results -->
+            <div id="result" class="space-y-4">
+                <img id="plot" class="hidden w-full rounded-lg border">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'function';
+        
+        function setInputMode(mode) {
+            currentMode = mode;
+            
+            // Update button states
+            const functionBtn = document.getElementById('functionBtn');
+            const fileBtn = document.getElementById('fileBtn');
+            
+            if (mode === 'function') {
+                functionBtn.classList.add('bg-background', 'text-foreground', 'shadow-sm');
+                functionBtn.classList.remove('text-muted-foreground');
+                fileBtn.classList.remove('bg-background', 'text-foreground', 'shadow-sm');
+                fileBtn.classList.add('text-muted-foreground');
+            } else {
+                fileBtn.classList.add('bg-background', 'text-foreground', 'shadow-sm');
+                fileBtn.classList.remove('text-muted-foreground');
+                functionBtn.classList.remove('bg-background', 'text-foreground', 'shadow-sm');
+                functionBtn.classList.add('text-muted-foreground');
+            }
+            
+            // Show/hide appropriate sections
+            document.getElementById('functionInput').style.display = mode === 'function' ? 'block' : 'none';
+            document.getElementById('fileInput').style.display = mode === 'file' ? 'block' : 'none';
+            
+            // Hide error when switching modes
+            hideError();
+        }
+
+        async function interpolate() {
+            hideError();
+            document.getElementById('plot').classList.add('hidden');
+            
+            // Get selected methods
+            const methods = Array.from(document.querySelectorAll('input[name="method"]:checked'))
+                .map(cb => cb.value);
+            
+            if (methods.length === 0) {
+                showError('Please select at least one interpolation method.');
+                return;
+            }
+            
+            let data = { methods };
+            
+            if (currentMode === 'function') {
+                data.function = document.getElementById('function').value;
+                data.a = document.getElementById('a').value;
+                data.b = document.getElementById('b').value;
+                data.degree = document.getElementById('degree').value;
+                
+                if (!data.function) {
+                    showError('Please enter a function.');
+                    return;
+                }
+            } else {
+                const fileInput = document.getElementById('csvFile');
+                if (!fileInput.files[0]) {
+                    showError('Please select a CSV file.');
+                    return;
+                }
+                
+                try {
+                    const text = await fileInput.files[0].text();
+                    data.file = text;
+                } catch (error) {
+                    showError('Error reading file.');
+                    return;
+                }
+            }
+            
+            try {
+                const response = await axios.post('/interpolate', data);
+                if (response.data.error) {
+                    showError(response.data.error);
+                    return;
+                }
+                
+                const plot = document.getElementById('plot');
+                plot.src = 'data:image/png;base64,' + response.data.plot;
+                plot.classList.remove('hidden');
+            } catch (error) {
+                showError(error.response?.data?.error || 'Error during interpolation.');
+                console.error(error);
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+        
+        function hideError() {
+            document.getElementById('error').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
